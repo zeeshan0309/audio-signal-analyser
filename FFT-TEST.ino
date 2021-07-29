@@ -7,18 +7,18 @@
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define IN_PIN 15
+#define IN_PIN        15 // Mic read pin
 #define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+#define SCREEN_ADDRESS 0x3C // 0x3C for 128x64
 
-#define SAMPLES 64          
-#define SAMPLING_FREQUENCY 20000
+#define SAMPLES 64  //N for N-point FFT         
+#define SAMPLING_FREQUENCY 20000  //Fs, Make sure satisifies Nyquist Criteria
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 arduinoFFT FFT = arduinoFFT();
 
-unsigned int sampling_period_us;
-unsigned long microseconds;
+unsigned int sampling_period_us;  //Time period
+unsigned long microseconds; //for storing Time
 
 double vReal[SAMPLES];
 double vImag[SAMPLES];
@@ -33,14 +33,20 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
 
-  sampling_period_us = round(1000000 * (1.0 / SAMPLING_FREQUENCY));  
+  sampling_period_us = round(1000000 * (1.0 / SAMPLING_FREQUENCY));  //Time period is inverse of Frequency
 
   display.clearDisplay();
+
+  text_displayer("0kHz", 0, 0, 1);
+  text_displayer("5kHz", 54, 0, 1);
+  text_displayer("10kHz", 94, 0, 1);  
+  text_invert_displayer("audioFFT ", 0, 56, 1);
+  text_displayer("313hz/u", 85, 56, 1);
 }
 
 void loop() {
-  display.clearDisplay();
 
+  //Reading 64 samples at Fs frequency
   for(int i = 0; i < SAMPLES; i += 1){
     microseconds = micros();
 
@@ -55,15 +61,41 @@ void loop() {
   FFT.Compute(vReal, vImag, SAMPLES, FFT_FORWARD);
   FFT.ComplexToMagnitude(vReal, vImag, SAMPLES);
 
-  //for(int j = 0; j < SAMPLES; j += 1){
-  //    display.fillRect(j*4, (64.0-(SIGNAL_VALS[j]*0.015625)), 3, (SIGNAL_VALS[j]*0.015625), WHITE);  
-  //}
-
-  for(int i = 0; i < SAMPLES/2; i += 1){
-    Serial.print((i * 1.0 * SAMPLING_FREQUENCY) / SAMPLES, 1);
-    Serial.print(" ");
-    Serial.println(vReal[i], 1);   
+  //Finding Max frequency in FFT result for Normalization
+  int peak = 0.0;
+  for(int i = 0; i < SAMPLES; i += 1){
+    if( peak < vReal[i] ){
+      peak = vReal[i];
+    }
   }
+
+  //Displaying (N/2) bins as Final result
+  double invPeak = 44.0/(peak*1.0);
+  display.fillRect(0, 7, 127, 48, BLACK);
+  for(int j = 0; j < SAMPLES; j += 1){
+    display.fillRect(j*4, (56.0-(vReal[j]*invPeak)), 3, (vReal[j]*invPeak), WHITE);  
+  }
+
   display.display();
-  delay(1000);
+  delay(1);
+}
+
+//Function for displaying Text on OLED display
+void text_displayer(String text, int x, int y, int s){
+  display.setTextSize(s);
+  display.setTextColor(WHITE);
+  display.setCursor(x, y);
+  display.println(text);
+
+  display.display();
+}
+
+//Function for displaying InverseBackground Text on OLED display
+void text_invert_displayer(String text, int x, int y, int s){
+  display.setTextSize(s);
+  display.setTextColor(BLACK, WHITE);
+  display.setCursor(x, y);
+  display.println(text);
+
+  display.display();
 }
