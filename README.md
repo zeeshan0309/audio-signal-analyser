@@ -1,6 +1,8 @@
 # audio-signal-analyser
 repo for Audio Signal Analyser project.
 
+video demonstration: https://youtu.be/6Siil4WP2zc 
+
 ## Layout
 
 1. <b>Input:</b> MAX4466 microphone module
